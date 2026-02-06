@@ -3,8 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Upload, FileText, Loader2, ChevronLeft, Clock } from "lucide-react";
+import { Upload, FileText, Loader2, ChevronLeft, Clock, X } from "lucide-react";
 import { scheduleEmails } from "@/services/emailApi";
 import { toast } from "sonner";
 
@@ -23,7 +22,6 @@ export default function ComposeModal({ open, onOpenChange, onScheduled }: Compos
   const [delay, setDelay] = useState(5);
   const [hourlyLimit, setHourlyLimit] = useState(200);
   const [submitting, setSubmitting] = useState(false);
-  const [sendLater, setSendLater] = useState(false);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,6 +43,10 @@ export default function ComposeModal({ open, onOpenChange, onScheduled }: Compos
     };
     reader.readAsText(file);
   }, []);
+
+  const removeEmail = (indexToRemove: number) => {
+    setEmails(emails.filter((_, idx) => idx !== indexToRemove));
+  };
 
   const handleSubmit = async () => {
     if (!subject || !body || emails.length === 0 || !startTime) {
@@ -82,198 +84,151 @@ export default function ComposeModal({ open, onOpenChange, onScheduled }: Compos
     setStartTime("");
     setDelay(5);
     setHourlyLimit(200);
-    setSendLater(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0">
-        <div className="flex h-[600px]">
-          <div className="flex-1 border-r border-gray-200 p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <button
-                onClick={() => {
-                  onOpenChange(false);
-                  resetForm();
-                }}
-                className="rounded-lg p-1 hover:bg-gray-100"
-              >
-                <ChevronLeft className="h-5 w-5 text-gray-600" />
-              </button>
-              <h2 className="text-lg font-semibold text-gray-900">Compose New Email</h2>
+      <DialogContent className="max-w-6xl p-0 max-h-screen flex flex-col">
+        <div className="border-b border-gray-200 px-8 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                onOpenChange(false);
+                resetForm();
+              }}
+              className="rounded-lg p-1 hover:bg-gray-100"
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-600" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900">Compose New Email</h2>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button className="rounded-lg p-2 text-green-600 hover:bg-green-50">
+              <Upload className="h-5 w-5" />
+            </button>
+            <button className="rounded-lg p-2 text-green-600 hover:bg-green-50">
+              <Clock className="h-5 w-5" />
+            </button>
+            <Button
+              onClick={() => {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                setStartTime(tomorrow.toISOString().slice(0, 16));
+              }}
+              className="rounded-full border border-green-600 bg-white px-6 py-2 text-sm font-medium text-green-600 transition-colors hover:bg-green-50"
+            >
+              Send Later
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-2xl space-y-6">
+            <div className="flex items-center gap-4">
+              <label className="w-20 text-sm font-medium text-gray-900">From</label>
+              <div className="flex-1 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                oliver.brown@domain.io
+              </div>
             </div>
 
-            <div className="space-y-4 overflow-y-auto" style={{ maxHeight: "calc(600px - 80px)" }}>
-              <div>
-                <Label htmlFor="from" className="text-xs font-medium text-gray-600">From</Label>
-                <Input id="from" value="oliver.brown@domain.io" disabled className="mt-1 bg-gray-50" />
-              </div>
-
-              <div>
-                <Label htmlFor="to" className="text-xs font-medium text-gray-600">To</Label>
-                <Input id="to" placeholder="recipient@example.com" disabled className="mt-1 bg-gray-50" />
-              </div>
-
-              <div>
-                <Label htmlFor="subject" className="text-xs font-medium text-gray-600">Subject</Label>
-                <Input
-                  id="subject"
-                  placeholder="Subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="mt-1 border-gray-300"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="delay" className="text-xs font-medium text-gray-600">Delay between 2 emails</Label>
-                  <Input
-                    id="delay"
-                    type="number"
-                    min={1}
-                    value={delay}
-                    onChange={(e) => setDelay(Number(e.target.value))}
-                    className="mt-1 border-gray-300"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="limit" className="text-xs font-medium text-gray-600">Hourly Limit</Label>
-                  <Input
-                    id="limit"
-                    type="number"
-                    min={1}
-                    value={hourlyLimit}
-                    onChange={(e) => setHourlyLimit(Number(e.target.value))}
-                    className="mt-1 border-gray-300"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="body" className="text-xs font-medium text-gray-600">Message</Label>
-                <Textarea
-                  id="body"
-                  placeholder="Type Your Reply..."
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  className="mt-1 border-gray-300"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium text-gray-600">Email Leads (CSV / Text)</Label>
-                <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
-                    {fileName ? (
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-gray-700">{fileName}</span>
-                        <span className="text-xs text-gray-500">({emails.length} emails)</span>
+            <div className="flex items-start gap-4">
+              <label className="w-20 text-sm font-medium text-gray-900 pt-3">To</label>
+              <div className="flex-1">
+                {emails.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {emails.slice(0, 3).map((email, idx) => (
+                      <div
+                        key={idx}
+                        className="inline-flex items-center gap-2 rounded-full border border-green-300 bg-green-50 px-3 py-1"
+                      >
+                        <span className="text-sm text-green-700">{email}</span>
+                        <button
+                          onClick={() => removeEmail(idx)}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    ) : (
-                      <span className="text-sm text-gray-600">Upload a CSV or text file</span>
+                    ))}
+                    {emails.length > 3 && (
+                      <div className="inline-flex items-center gap-2 rounded-full border border-green-300 bg-green-50 px-3 py-1">
+                        <span className="text-sm font-medium text-green-700">+{emails.length - 3}</span>
+                      </div>
                     )}
                   </div>
+                ) : (
+                  <Input
+                    placeholder="recipient@example.com"
+                    className="border-gray-300"
+                  />
+                )}
+                <label className="mt-2 flex items-center justify-end gap-2 cursor-pointer">
+                  <Upload className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-600">Upload List</span>
                   <input type="file" accept=".csv,.txt,.text" className="hidden" onChange={handleFileUpload} />
                 </label>
               </div>
             </div>
-          </div>
 
-          <div className="w-80 border-l border-gray-200 bg-gray-50 p-8">
-            <h3 className="text-lg font-semibold text-gray-900">Send Later</h3>
-
-            <div className="mt-6 space-y-2">
-              <button
-                onClick={() => setSendLater(false)}
-                className="w-full rounded-lg bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
-              >
-                Pick date & time
-              </button>
-
-              <button
-                onClick={() => {
-                  setSendLater(true);
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  const isoString = tomorrow.toISOString().slice(0, 16);
-                  setStartTime(isoString);
-                }}
-                className="w-full rounded-lg px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-white"
-              >
-                Tomorrow
-              </button>
-
-              <button
-                onClick={() => {
-                  setSendLater(true);
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  tomorrow.setHours(10, 0, 0);
-                  const isoString = tomorrow.toISOString().slice(0, 16);
-                  setStartTime(isoString);
-                }}
-                className="w-full rounded-lg px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-white"
-              >
-                Tomorrow, 10:00 AM
-              </button>
-
-              <button
-                onClick={() => {
-                  setSendLater(true);
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  tomorrow.setHours(11, 0, 0);
-                  const isoString = tomorrow.toISOString().slice(0, 16);
-                  setStartTime(isoString);
-                }}
-                className="w-full rounded-lg px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-white"
-              >
-                Tomorrow, 11:00 AM
-              </button>
-
-              <button
-                onClick={() => {
-                  setSendLater(true);
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  tomorrow.setHours(15, 0, 0);
-                  const isoString = tomorrow.toISOString().slice(0, 16);
-                  setStartTime(isoString);
-                }}
-                className="w-full rounded-lg px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-white"
-              >
-                Tomorrow, 3:00 PM
-              </button>
+            <div className="flex items-center gap-4">
+              <label className="w-20 text-sm font-medium text-gray-900">Subject</label>
+              <Input
+                placeholder="Subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="flex-1 border-gray-300"
+              />
             </div>
 
-            <div className="mt-8 flex gap-3">
-              <Button
-                onClick={() => {
-                  onOpenChange(false);
-                  resetForm();
-                }}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="flex-1 rounded-lg border border-green-600 bg-white px-4 py-2 text-sm font-medium text-green-600 transition-colors hover:bg-green-50"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  "Done"
-                )}
-              </Button>
+            <div className="flex items-center gap-4">
+              <label className="w-20 text-sm font-medium text-gray-900">Delay between 2 emails</label>
+              <Input
+                type="number"
+                min={1}
+                value={delay}
+                onChange={(e) => setDelay(Number(e.target.value))}
+                className="w-24 border-gray-300"
+              />
+              <label className="text-sm font-medium text-gray-900 ml-6">Hourly Limit</label>
+              <Input
+                type="number"
+                min={1}
+                value={hourlyLimit}
+                onChange={(e) => setHourlyLimit(Number(e.target.value))}
+                className="w-24 border-gray-300"
+              />
+            </div>
+
+            <div className="flex gap-4">
+              <label className="w-20 pt-3 text-sm font-medium text-gray-900">Message</label>
+              <Textarea
+                placeholder="Type Your Reply..."
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                className="flex-1 border-gray-300 rounded-lg"
+                rows={8}
+              />
+            </div>
+
+            <div className="flex gap-4">
+              <label className="w-20 text-sm font-medium text-gray-900">Formatting</label>
+              <div className="flex flex-wrap gap-3 items-center text-gray-400">
+                <button className="hover:text-gray-600">↶</button>
+                <button className="hover:text-gray-600">↷</button>
+                <button className="hover:text-gray-600">T</button>
+                <button className="hover:text-gray-600">B</button>
+                <button className="hover:text-gray-600">I</button>
+                <button className="hover:text-gray-600">U</button>
+                <button className="hover:text-gray-600">≡</button>
+                <button className="hover:text-gray-600">◇</button>
+                <button className="hover:text-gray-600">≡</button>
+                <button className="hover:text-gray-600">≡</button>
+                <button className="hover:text-gray-600">≡</button>
+                <button className="hover:text-gray-600">❝</button>
+                <button className="hover:text-gray-600">⎕</button>
+                <button className="hover:text-gray-600">S</button>
+              </div>
             </div>
           </div>
         </div>
