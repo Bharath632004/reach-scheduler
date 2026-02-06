@@ -1,8 +1,8 @@
-# Welcome to your Lovable project
+# Welcome to your Reach project
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**URL**: https://reach-scheduler.vercel.app/
 
 ## How can I edit this code?
 
