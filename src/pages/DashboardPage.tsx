@@ -1,89 +1,105 @@
 import { useState, useEffect, useCallback } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarClock, Send } from "lucide-react";
-import DashboardHeader from "@/components/DashboardHeader";
-import EmailTable from "@/components/EmailTable";
+import Sidebar from "@/components/Sidebar";
 import ComposeModal from "@/components/ComposeModal";
-import StatsCards from "@/components/StatsCards";
 import { fetchScheduledEmails, fetchSentEmails } from "@/services/emailApi";
 import { Email } from "@/types/email";
+import { Loader2, Search } from "lucide-react";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
 
 export default function DashboardPage() {
   const [scheduled, setScheduled] = useState<Email[]>([]);
   const [sent, setSent] = useState<Email[]>([]);
-  const [loadingScheduled, setLoadingScheduled] = useState(true);
-  const [loadingSent, setLoadingSent] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadData = useCallback(async () => {
-    setLoadingScheduled(true);
-    setLoadingSent(true);
+    setLoading(true);
     const [s, t] = await Promise.all([fetchScheduledEmails(), fetchSentEmails()]);
     setScheduled(s);
     setSent(t);
-    setLoadingScheduled(false);
-    setLoadingSent(false);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const isLoading = loadingScheduled || loadingSent;
+  const allEmails = [...scheduled, ...sent].sort((a, b) =>
+    new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+  );
+
+  const filteredEmails = allEmails.filter(email =>
+    email.to.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    email.subject.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <DashboardHeader />
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar
+        scheduled={scheduled.length}
+        sent={sent.length}
+        onCompose={() => setComposeOpen(true)}
+      />
 
-      <main className="flex-1 px-6 py-6">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Email Scheduler</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Schedule, track, and manage your email campaigns
+      <div className="flex-1">
+        <div className="border-b border-gray-200 bg-white px-8 py-6">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 border-gray-300 bg-gray-50"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-green-600" />
+              <p className="text-sm text-gray-500">Loading emails...</p>
+            </div>
+          ) : filteredEmails.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <p className="font-medium text-gray-900">No emails found</p>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchQuery ? "Try a different search" : "Schedule your first email to get started"}
               </p>
             </div>
-            <ComposeModal onScheduled={loadData} />
-          </div>
-
-          <StatsCards scheduled={scheduled} sent={sent} isLoading={isLoading} />
-
-          <Tabs defaultValue="scheduled" className="space-y-4">
-            <TabsList className="bg-card border border-border">
-              <TabsTrigger value="scheduled" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <CalendarClock className="h-4 w-4" />
-                Scheduled
-                {!loadingScheduled && (
-                  <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
-                    {scheduled.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="sent" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Send className="h-4 w-4" />
-                Sent
-                {!loadingSent && (
-                  <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
-                    {sent.length}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="scheduled" className="animate-fade-in">
-              <div className="rounded-xl border border-border bg-card p-1">
-                <EmailTable emails={scheduled} isLoading={loadingScheduled} type="scheduled" />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="sent" className="animate-fade-in">
-              <div className="rounded-xl border border-border bg-card p-1">
-                <EmailTable emails={sent} isLoading={loadingSent} type="sent" />
-              </div>
-            </TabsContent>
-          </Tabs>
+          ) : (
+            <div className="space-y-1">
+              {filteredEmails.map((email) => (
+                <div
+                  key={email.id}
+                  className="flex cursor-pointer items-center gap-4 rounded-lg border border-gray-200 bg-white px-6 py-4 transition-colors hover:bg-gray-50"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">To: {email.to}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="inline-block rounded bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700">
+                        {scheduled.find(e => e.id === email.id) ? "Scheduled" : "Sent"}
+                      </span>
+                      <p className="text-sm text-gray-600">{email.subject}</p>
+                    </div>
+                  </div>
+                  <p className="text-right text-sm text-gray-500">
+                    {format(new Date(email.scheduledAt), "MMM d, h:mm a")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </main>
+      </div>
+
+      <ComposeModal open={composeOpen} onOpenChange={setComposeOpen} onScheduled={loadData} />
     </div>
   );
 }

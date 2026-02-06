@@ -18,9 +18,9 @@ export const useAuth = () => {
 
 // Mock Google login — replace with real Google OAuth in production
 const MOCK_USER: User = {
-  name: "Mitrajit Chandra",
-  email: "mitrajit@reachinbox.ai",
-  avatar: "https://ui-avatars.com/api/?name=Mitrajit+Chandra&background=3b82f6&color=fff&bold=true",
+  name: "Oliver Brown",
+  email: "oliver.brown@domain.io",
+  avatar: "https://ui-avatars.com/api/?name=Oliver+Brown&background=10b981&color=fff&bold=true",
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
